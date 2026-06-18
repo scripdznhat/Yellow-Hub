@@ -62,32 +62,52 @@ end
 -----------------------------------------------------------
 -- NÚT CHỨC NĂNG
 -----------------------------------------------------------
+
+-- SỬA LỖI DUPE PET: XÓA SCRIPT BẢO VỆ CỦA GAME & NÂNG CHIỀU CAO
 btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function()
     local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
     if tool and (tool:GetAttribute("PetId") or tool:GetAttribute("Pet")) then
         local clone = tool:Clone()
         clone:SetAttribute("PetId", "CLONED_FAKE")
+        
+        -- QUAN TRỌNG 1: Tiêu diệt script kiểm tra của game để tool nằm yên trong túi đồ
+        for _, v in pairs(clone:GetDescendants()) do
+            if v:IsA("Script") or v:IsA("LocalScript") then 
+                v:Destroy() 
+            end
+        end
+
         clone.Activated:Connect(function()
             local mouse = plr:GetMouse()
             local petName = tool:GetAttribute("Pet") or tool.Name
             local realPet = nil
+            
             for _, obj in pairs(Workspace:GetDescendants()) do
                 if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= plr.Character then
                     realPet = obj; break
                 end
             end
+            
             if realPet then
                 local pet = realPet:Clone()
                 for _, v in pairs(pet:GetDescendants()) do
                     if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
-                    if v:IsA("BasePart") then v.Anchored = true; v.CanCollide = false end
+                    if v:IsA("BasePart") then 
+                        v.Anchored = true -- KHÓA CỨNG ĐỨNG YÊN
+                        v.CanCollide = false 
+                    end
                 end
+                
                 pet.Parent = Workspace
                 local _, size = pet:GetBoundingBox()
-                pet:PivotTo(CFrame.new(mouse.Hit.p + Vector3.new(0, size.Y/2, 0)))
+                
+                -- QUAN TRỌNG 2: Cộng thêm 0.5 studs vào chiều cao để không bị lọt xuống đất
+                pet:PivotTo(CFrame.new(mouse.Hit.p + Vector3.new(0, (size.Y/2) + 0.5, 0)))
             end
             clone:Destroy()
         end)
+        
+        -- Sau khi đã xóa script bảo vệ, ném nó vào túi đồ
         clone.Parent = plr.Backpack
     end
 end)
