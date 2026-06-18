@@ -63,32 +63,91 @@ end
 -- NÚT CHỨC NĂNG
 -----------------------------------------------------------
 btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function()
-    local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
+    local char = plr.Character
+    local tool = char and char:FindFirstChildOfClass("Tool")
+    
     if tool and (tool:GetAttribute("PetId") or tool:GetAttribute("Pet")) then
-        local clone = tool:Clone()
-        clone:SetAttribute("PetId", "CLONED_FAKE")
-        clone.Activated:Connect(function()
-            local mouse = plr:GetMouse()
-            local petName = tool:GetAttribute("Pet") or tool.Name
-            local realPet = nil
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= plr.Character then
-                    realPet = obj; break
+        local petName = tool:GetAttribute("Pet") or tool.Name
+        local realPet = nil
+        
+        -- Tìm Pet gốc trong game
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= char then
+                realPet = obj; break
+            end
+        end
+        
+        if realPet then
+            -- 1. TẠO TOOL MỚI TINH ĐỂ LÁCH LỖI VÀ HIỂN THỊ ẢNH
+            local fakeTool = Instance.new("Tool")
+            fakeTool.Name = petName
+            fakeTool.TextureId = tool.TextureId -- Lấy ảnh gốc dán vào kho đồ
+            fakeTool.CanBeDropped = false
+            
+            -- 2. TẠO HANDLE ĐỂ HIỆN PET KHI CẦM TRÊN TAY
+            local handle = Instance.new("Part")
+            handle.Name = "Handle"
+            handle.Size = Vector3.new(1, 1, 1)
+            handle.Transparency = 1
+            handle.CanCollide = false
+            handle.Massless = true
+            handle.Parent = fakeTool
+            
+            local displayPet = realPet:Clone()
+            for _, v in pairs(displayPet:GetDescendants()) do
+                if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
+                if v:IsA("BasePart") then
+                    v.Anchored = false
+                    v.CanCollide = false
+                    v.Massless = true
                 end
             end
-            if realPet then
-                local pet = realPet:Clone()
-                for _, v in pairs(pet:GetDescendants()) do
+            displayPet.Parent = fakeTool
+            
+            -- Gắn mô hình Pet vào cục Handle để bạn cầm được
+            local root = displayPet.PrimaryPart or displayPet:FindFirstChildWhichIsA("BasePart")
+            if root then
+                displayPet:PivotTo(handle.CFrame * CFrame.new(0, 0, -2)) -- Hiện ra đằng trước một xíu cho đẹp
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = handle
+                weld.Part1 = root
+                weld.Parent = handle
+            end
+            
+            -- 3. LOGIC THẢ PET (Chuẩn mặt đất, không lơ lửng)
+            fakeTool.Activated:Connect(function()
+                local mouse = plr:GetMouse()
+                local hitPos = mouse.Hit.Position
+                
+                local dropPet = realPet:Clone()
+                for _, v in pairs(dropPet:GetDescendants()) do
                     if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
-                    if v:IsA("BasePart") then v.Anchored = true; v.CanCollide = false end
+                    if v:IsA("BasePart") then 
+                        v.Anchored = true -- Khóa cứng
+                        v.CanCollide = false 
+                    end
                 end
-                pet.Parent = Workspace
-                local _, size = pet:GetBoundingBox()
-                pet:PivotTo(CFrame.new(mouse.Hit.p + Vector3.new(0, size.Y/2, 0)))
-            end
-            clone:Destroy()
-        end)
-        clone.Parent = plr.Backpack
+                
+                dropPet.Parent = Workspace
+                local _, size = dropPet:GetBoundingBox()
+                
+                -- Bắn tia từ trên trời xuống trúng mặt đất để tìm đúng bề mặt
+                local rayParams = RaycastParams.new()
+                rayParams.FilterType = Enum.RaycastFilterType.Exclude
+                rayParams.FilterDescendantsInstances = {char, dropPet}
+                local rayResult = Workspace:Raycast(hitPos + Vector3.new(0, 50, 0), Vector3.new(0, -100, 0), rayParams)
+                
+                local groundY = rayResult and rayResult.Position.Y or hitPos.Y
+                
+                -- Đặt Pet xuống đất chuẩn xác (+0.1 để chống lỗi đồ họa lọt mép)
+                dropPet:PivotTo(CFrame.new(hitPos.X, groundY + (size.Y/2) + 0.1, hitPos.Z))
+                
+                -- Thả xong xóa luôn Tool
+                fakeTool:Destroy()
+            end)
+            
+            fakeTool.Parent = plr.Backpack
+        end
     end
 end)
 
