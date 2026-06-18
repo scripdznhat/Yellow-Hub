@@ -59,40 +59,52 @@ local function btn(txt, col)
 end
 
 -----------------------------------------------------------
--- 1. DUPE PET (THẢ ĐỨNG YÊN TỪ TÚI ĐỒ)
+-- 1. DUPE PET (SPAM SIÊU TỐC - TỰ ĐỘNG DIỆT SCRIPT CHỐNG HACK)
 -----------------------------------------------------------
 btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function()
     local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
     if tool and (tool:GetAttribute("PetId") or tool:GetAttribute("Pet")) then
         local clone = tool:Clone()
         clone:SetAttribute("PetId", "CLONED_FAKE")
+        
+        -- Diệt sạch script gốc của game ngay lập tức để tool không bị vứt ra đất
+        for _, v in pairs(clone:GetDescendants()) do
+            if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
+        end
+        
         clone.Activated:Connect(function()
             local mouse = plr:GetMouse()
             local petName = tool:GetAttribute("Pet") or tool.Name
             local realPet = nil
+            
             for _, obj in pairs(Workspace:GetDescendants()) do
                 if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= plr.Character then
                     realPet = obj; break
                 end
             end
+            
             if realPet then
                 local pet = realPet:Clone()
                 for _, v in pairs(pet:GetDescendants()) do
                     if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
-                    if v:IsA("BasePart") then v.Anchored = true; v.CanCollide = false end
+                    if v:IsA("BasePart") then 
+                        v.Anchored = true 
+                        v.CanCollide = false 
+                    end
                 end
                 pet.Parent = Workspace
                 local _, size = pet:GetBoundingBox()
-                pet:PivotTo(CFrame.new(mouse.Hit.p + Vector3.new(0, size.Y/2, 0)))
+                pet:PivotTo(CFrame.new(mouse.Hit.p + Vector3.new(0, (size.Y/2) + 0.5, 0)))
             end
             clone:Destroy()
         end)
+        
         clone.Parent = plr.Backpack
     end
 end)
 
 -----------------------------------------------------------
--- 2. DUPE SEEDS
+-- 2. DUPE SEEDS (BẤM LIÊN TỤC CỘNG DỒN)
 -----------------------------------------------------------
 btn("DUPE SEEDS", Color3.fromRGB(40, 180, 40)).MouseButton1Click:Connect(function()
     local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
@@ -102,7 +114,7 @@ btn("DUPE SEEDS", Color3.fromRGB(40, 180, 40)).MouseButton1Click:Connect(functio
 end)
 
 -----------------------------------------------------------
--- 3. DUPE COIN
+-- 3. DUPE COIN (NHÂN ĐÔI LIÊN TỤC KHÔNG CHỜ)
 -----------------------------------------------------------
 btn("DUPE COIN", Color3.fromRGB(255, 120, 0)).MouseButton1Click:Connect(function()
     local ls = plr:FindFirstChild("leaderstats")
