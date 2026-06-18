@@ -60,35 +60,64 @@ local function btn(txt, col)
 end
 
 -----------------------------------------------------------
--- NÚT CHỨC NĂNG
+-- NÚT CHỨC NĂNG (0S DELAY - FULL SPAM)
 -----------------------------------------------------------
+
 btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function()
-    local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
+    local char = plr.Character
+    local tool = char and char:FindFirstChildOfClass("Tool")
+    
     if tool and (tool:GetAttribute("PetId") or tool:GetAttribute("Pet")) then
-        local clone = tool:Clone()
-        clone:SetAttribute("PetId", "CLONED_FAKE")
-        clone.Activated:Connect(function()
+        local petName = tool:GetAttribute("Pet") or tool.Name
+        
+        -- CÁCH MỚI: TẠO TOOL MỚI TINH TỪ ĐẦU ĐỂ LÁCH ANTI-CHEAT
+        local fakeTool = Instance.new("Tool")
+        fakeTool.Name = "[CLONE] " .. petName
+        fakeTool.RequiresHandle = false -- Giúp tool hoạt động mà không cần Part tay cầm
+        fakeTool.CanBeDropped = false
+        
+        fakeTool.Activated:Connect(function()
             local mouse = plr:GetMouse()
-            local petName = tool:GetAttribute("Pet") or tool.Name
+            local hitPos = mouse.Hit.Position
+            
             local realPet = nil
             for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= plr.Character then
+                if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= char then
                     realPet = obj; break
                 end
             end
+            
             if realPet then
                 local pet = realPet:Clone()
+                
+                -- ÉP CỨNG ANCHORED NGAY LẬP TỨC & XÓA SCRIPT
                 for _, v in pairs(pet:GetDescendants()) do
-                    if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
-                    if v:IsA("BasePart") then v.Anchored = true; v.CanCollide = false end
+                    if v:IsA("Script") or v:IsA("LocalScript") then 
+                        v:Destroy() 
+                    elseif v:IsA("BasePart") then
+                        v.Anchored = true -- Khóa cứng, không thể rơi vật lý
+                        v.CanCollide = false
+                    end
                 end
+                
+                -- Đặt Parent sau khi đã khóa cứng
                 pet.Parent = Workspace
-                local _, size = pet:GetBoundingBox()
-                pet:PivotTo(CFrame.new(mouse.Hit.p + Vector3.new(0, size.Y/2, 0)))
+                
+                -- Tìm lõi của Pet để đặt vị trí
+                local petRoot = pet:FindFirstChild("HumanoidRootPart") or pet.PrimaryPart or pet:FindFirstChildWhichIsA("BasePart")
+                if petRoot then
+                    pet.PrimaryPart = petRoot
+                    -- Tăng cố định lên 2.5 studs để không bao giờ bị dính lòng đất
+                    pet:PivotTo(CFrame.new(hitPos + Vector3.new(0, 2.5, 0)))
+                end
             end
-            clone:Destroy()
+            
+            -- Xóa tool sau khi thả 1 lần (nếu bạn muốn spam nhiều con trên 1 tool thì bỏ dòng này đi)
+            fakeTool:Destroy()
         end)
-        clone.Parent = plr.Backpack
+        
+        -- Cho ngay vào túi đồ
+        fakeTool.Parent = plr.Backpack
     end
 end)
 
