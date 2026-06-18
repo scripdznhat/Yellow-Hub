@@ -21,6 +21,7 @@ end
 local mf = Instance.new("Frame", sg)
 mf.Size, mf.Position = UDim2.new(0, 190, 0, 275), UDim2.new(0.5, -95, 0.4, -120)
 mf.BackgroundColor3, mf.Active, mf.Draggable = Color3.fromRGB(20, 20, 20), true, true
+mf.Visible = true 
 r(mf, 12)
 
 local mt = Instance.new("TextLabel", mf)
@@ -53,59 +54,44 @@ local function btn(txt, col)
     local b = Instance.new("TextButton", ctn)
     b.Size = UDim2.new(1, 0, 0, 40)
     b.Text, b.BackgroundColor3 = txt, col
-    b.TextColor3, b.Font, b.TextSize = Color3.fromRGB(255, 255, 255), Enum.Font.SourceSansBold, 14
+    b.TextColor3, b.Font, b.TextSize = Color3.fromRGB(255,255,255), Enum.Font.SourceSansBold, 14
     r(b, 8)
     return b
 end
 
 -----------------------------------------------------------
--- 1. DUPE PET (SPAM SIÊU TỐC - TỰ ĐỘNG DIỆT SCRIPT CHỐNG HACK)
+-- NÚT CHỨC NĂNG
 -----------------------------------------------------------
 btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function()
     local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
     if tool and (tool:GetAttribute("PetId") or tool:GetAttribute("Pet")) then
         local clone = tool:Clone()
         clone:SetAttribute("PetId", "CLONED_FAKE")
-        
-        -- Diệt sạch script gốc của game ngay lập tức để tool không bị vứt ra đất
-        for _, v in pairs(clone:GetDescendants()) do
-            if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
-        end
-        
         clone.Activated:Connect(function()
             local mouse = plr:GetMouse()
             local petName = tool:GetAttribute("Pet") or tool.Name
             local realPet = nil
-            
             for _, obj in pairs(Workspace:GetDescendants()) do
                 if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= plr.Character then
                     realPet = obj; break
                 end
             end
-            
             if realPet then
                 local pet = realPet:Clone()
                 for _, v in pairs(pet:GetDescendants()) do
                     if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
-                    if v:IsA("BasePart") then 
-                        v.Anchored = true 
-                        v.CanCollide = false 
-                    end
+                    if v:IsA("BasePart") then v.Anchored = true; v.CanCollide = false end
                 end
                 pet.Parent = Workspace
                 local _, size = pet:GetBoundingBox()
-                pet:PivotTo(CFrame.new(mouse.Hit.p + Vector3.new(0, (size.Y/2) + 0.5, 0)))
+                pet:PivotTo(CFrame.new(mouse.Hit.p + Vector3.new(0, size.Y/2, 0)))
             end
             clone:Destroy()
         end)
-        
         clone.Parent = plr.Backpack
     end
 end)
 
------------------------------------------------------------
--- 2. DUPE SEEDS (BẤM LIÊN TỤC CỘNG DỒN)
------------------------------------------------------------
 btn("DUPE SEEDS", Color3.fromRGB(40, 180, 40)).MouseButton1Click:Connect(function()
     local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
     if tool and (tool:GetAttribute("SeedTool") or tool:GetAttribute("MainCategory") == "Seed") then
@@ -113,9 +99,6 @@ btn("DUPE SEEDS", Color3.fromRGB(40, 180, 40)).MouseButton1Click:Connect(functio
     end
 end)
 
------------------------------------------------------------
--- 3. DUPE COIN (NHÂN ĐÔI LIÊN TỤC KHÔNG CHỜ)
------------------------------------------------------------
 btn("DUPE COIN", Color3.fromRGB(255, 120, 0)).MouseButton1Click:Connect(function()
     local ls = plr:FindFirstChild("leaderstats")
     if ls and ls:FindFirstChild("Sheckles") then
@@ -123,9 +106,6 @@ btn("DUPE COIN", Color3.fromRGB(255, 120, 0)).MouseButton1Click:Connect(function
     end
 end)
 
------------------------------------------------------------
--- 4. FIX LAG 1
------------------------------------------------------------
 btn("FIX LAG 1", Color3.fromRGB(0, 180, 255)).MouseButton1Click:Connect(function()
     Lighting.GlobalShadows = false
     for _, v in pairs(Workspace:GetDescendants()) do
@@ -134,9 +114,6 @@ btn("FIX LAG 1", Color3.fromRGB(0, 180, 255)).MouseButton1Click:Connect(function
     end
 end)
 
------------------------------------------------------------
--- 5. FIX LAG 2
------------------------------------------------------------
 btn("FIX LAG 2", Color3.fromRGB(255, 80, 0)).MouseButton1Click:Connect(function()
     for _, v in pairs(Workspace:GetDescendants()) do
         if plr.Character and not v:IsDescendantOf(plr.Character) and v:IsA("BasePart") then
