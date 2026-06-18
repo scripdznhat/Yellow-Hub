@@ -1,6 +1,8 @@
 local plr = game.Players.LocalPlayer
 local pg = plr:WaitForChild("PlayerGui")
 local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local Lighting = game:GetService("Lighting")
 
 if pg:FindFirstChild("LDTDZ_Final_Fix_V4") then pg.LDTDZ_Final_Fix_V4:Destroy() end
 
@@ -10,97 +12,57 @@ sg.ResetOnSpawn = false
 
 local function r(o, v)
     local c = Instance.new("UICorner", o)
-    c.CornerRadius = UDim.new(0, v or 6)
+    c.CornerRadius = UDim.new(0, v or 8)
 end
 
 -----------------------------------------------------------
--- [[ MENU CHÍNH ]] --
+-- [[ MENU CHÍNH - YELLOW HUB ]] --
 -----------------------------------------------------------
 local mf = Instance.new("Frame", sg)
-mf.Size, mf.Position = UDim2.new(0, 180, 0, 245), UDim2.new(0.5, -90, 0.4, -120)
-mf.BackgroundColor3, mf.Active, mf.Draggable = Color3.fromRGB(15, 15, 15), true, true
+mf.Size, mf.Position = UDim2.new(0, 190, 0, 275), UDim2.new(0.5, -95, 0.4, -120)
+mf.BackgroundColor3, mf.Active, mf.Draggable = Color3.fromRGB(20, 20, 20), true, true
 mf.Visible = true 
-r(mf, 8)
+r(mf, 12)
 
 local mt = Instance.new("TextLabel", mf)
-mt.Size, mt.Text = UDim2.new(1, 0, 0, 30), "LDTDZ HUB"
-mt.BackgroundColor3, mt.TextColor3 = Color3.fromRGB(80, 0, 200), Color3.new(1, 1, 1)
+mt.Size, mt.Text = UDim2.new(1, 0, 0, 40), "YELLOW HUB"
+mt.BackgroundColor3, mt.TextColor3 = Color3.fromRGB(255, 200, 0), Color3.new(0, 0, 0)
 mt.Font = Enum.Font.SourceSansBold
-mt.TextSize = 14
-r(mt, 8)
+mt.TextSize = 18
+r(mt, 12)
 
 local toggleBtn = Instance.new("TextButton", mf)
-toggleBtn.Size, toggleBtn.Position = UDim2.new(0, 25, 0, 25), UDim2.new(1, -30, 0, 2.5)
-toggleBtn.Text, toggleBtn.BackgroundColor3 = "-", Color3.fromRGB(40, 40, 40)
+toggleBtn.Size, toggleBtn.Position = UDim2.new(0, 30, 0, 30), UDim2.new(1, -35, 0, 5)
+toggleBtn.Text, toggleBtn.BackgroundColor3 = "-", Color3.fromRGB(50, 50, 50)
 toggleBtn.TextColor3, toggleBtn.Font = Color3.new(1, 1, 1), Enum.Font.SourceSansBold
-r(toggleBtn, 5)
+r(toggleBtn, 8)
 
 local ctn = Instance.new("Frame", mf)
-ctn.Size, ctn.Position = UDim2.new(1, -14, 1, -40), UDim2.new(0, 7, 0, 35)
+ctn.Size, ctn.Position = UDim2.new(1, -20, 1, -50), UDim2.new(0, 10, 0, 45)
 ctn.BackgroundTransparency = 1
 local ly = Instance.new("UIListLayout", ctn)
-ly.Padding = UDim.new(0, 4)
+ly.Padding = UDim.new(0, 6)
 
-local isOpen = true
 toggleBtn.MouseButton1Click:Connect(function()
-    isOpen = not isOpen
-    toggleBtn.Text = isOpen and "-" or "+"
-    mf:TweenSize(isOpen and UDim2.new(0, 180, 0, 245) or UDim2.new(0, 180, 0, 30), "Out", "Quart", 0.2, true)
-    ctn.Visible = isOpen
+    local isOpen = (mf.Size.Y.Offset > 50)
+    toggleBtn.Text = isOpen and "+" or "-"
+    mf:TweenSize(isOpen and UDim2.new(0, 190, 0, 40) or UDim2.new(0, 190, 0, 275), "Out", "Quart", 0.2, true)
+    ctn.Visible = not isOpen
 end)
-
------------------------------------------------------------
--- LOGIC BAY & TELE 
------------------------------------------------------------
-local P1, P2, SPEED = Vector3.new(152.30, 3.23, -136.38), Vector3.new(2409.65, 3.28, -137.5), 2
-local noclip = false
-
-local teleLocations = {
-    Vector3.new(201.6, -3.5, 6.7),
-    Vector3.new(290.1, -3.5, 16.4),
-    Vector3.new(395.4, -3.5, -16.8),
-    Vector3.new(537.7, -3.5, 36.8),
-    Vector3.new(761.5, -3.5, 6.7),
-    Vector3.new(1081.1, -3.5, -1.4),
-    Vector3.new(1558.6, -3.5, -41.3),
-    Vector3.new(2240.5, -3.5, -0.8),
-    Vector3.new(2616.6, -3.5, -58.0)
-}
-local currentIdx = 1 
-
-RunService.Stepped:Connect(function()
-    if noclip and plr.Character then
-        for _, v in pairs(plr.Character:GetDescendants()) do
-            if v:IsA("BasePart") then v.CanCollide = false end
-        end
-    end
-end)
-
-local function fly(target)
-    local hrp = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-    if not hrp then return end
-    noclip = true
-    local startPos = hrp.Position
-    local steps = (target - startPos).Magnitude / SPEED
-    for i = 1, steps do
-        hrp.CFrame = CFrame.new(startPos:Lerp(target, i / steps))
-        RunService.Heartbeat:Wait()
-    end
-    hrp.CFrame = CFrame.new(target)
-    noclip = false
-end
 
 local function btn(txt, col)
     local b = Instance.new("TextButton", ctn)
-    b.Size = UDim2.new(1, 0, 0, 38)
+    b.Size = UDim2.new(1, 0, 0, 40)
     b.Text, b.BackgroundColor3 = txt, col
     b.TextColor3, b.Font, b.TextSize = Color3.new(1, 1, 1), Enum.Font.SourceSansBold, 14
-    r(b, 4)
+    r(b, 8)
     return b
 end
 
--- 1. DUPE PET (BẢN TỐI THƯỢNG GIỐNG 100%: CHỐNG LỌT ĐẤT & ÉP KHUNG XƯƠNG CHẠY CHÂN)
-btn("DUPE PET", Color3.fromRGB(0, 100, 200)).MouseButton1Click:Connect(function()
+-----------------------------------------------------------
+-- 1. DUPE PET (CHÍNH XÁC BẢN TỐI THƯỢNG BẠN CUNG CẤP)
+-----------------------------------------------------------
+btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function()
     local char = plr.Character
     local tool = char and char:FindFirstChildOfClass("Tool")
     
@@ -238,46 +200,45 @@ btn("DUPE PET", Color3.fromRGB(0, 100, 200)).MouseButton1Click:Connect(function(
     end
 end)
 
--- 2. GOD MOD
-local bG = btn("GOD MOD: OFF", Color3.fromRGB(40, 40, 40))
-local god = false
-bG.MouseButton1Click:Connect(function()
-    god = not god
-    bG.Text = god and "GOD MOD: ON" or "GOD MOD: OFF"
-    bG.BackgroundColor3 = god and Color3.fromRGB(0, 140, 70) or Color3.fromRGB(40, 40, 40)
-end)
-RunService.Heartbeat:Connect(function() if god and plr.Character and plr.Character:FindFirstChild("Humanoid") then plr.Character.Humanoid.Health = 100 end end)
-
--- 3. AUTO TELE
-local bTele = btn("AUTO TELE", Color3.fromRGB(100, 0, 180))
-bTele.MouseButton1Click:Connect(function()
-    local h = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-    if h then
-        h.CFrame = CFrame.new(teleLocations[currentIdx])
-        bTele.Text = "TELE: " .. currentIdx
-        currentIdx = currentIdx + 1
-        if currentIdx > #teleLocations then currentIdx = 1 end
+-----------------------------------------------------------
+-- 2. DUPE SEEDS
+-----------------------------------------------------------
+btn("DUPE SEEDS", Color3.fromRGB(40, 180, 40)).MouseButton1Click:Connect(function()
+    local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
+    if tool and (tool:GetAttribute("SeedTool") or tool:GetAttribute("MainCategory") == "Seed") then
+        tool:SetAttribute("Count", (tool:GetAttribute("Count") or 0) + 10)
     end
 end)
 
--- 4. TELE TO END
-btn("TELE TO END", Color3.fromRGB(180, 40, 40)).MouseButton1Click:Connect(function()
-    local h = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-    if h then 
-        h.CFrame = CFrame.new(P1) 
-        task.wait(0.5) 
-        fly(P2) 
-        setclipboard("2409.65, 3.28, -137.5") 
+-----------------------------------------------------------
+-- 3. DUPE COIN
+-----------------------------------------------------------
+btn("DUPE COIN", Color3.fromRGB(255, 120, 0)).MouseButton1Click:Connect(function()
+    local ls = plr:FindFirstChild("leaderstats")
+    if ls and ls:FindFirstChild("Sheckles") then
+        ls.Sheckles.Value = ls.Sheckles.Value * 2
     end
 end)
 
--- 5. AUTO TELE HOME
-btn("AUTO TELE HOME", Color3.fromRGB(0, 120, 60)).MouseButton1Click:Connect(function()
-    local h = plr.Character and plr.Character:FindFirstChild("HumanoidRootPart")
-    if h then 
-        h.CFrame = CFrame.new(P2) 
-        task.wait(0.5) 
-        fly(P1) 
-        setclipboard("152.30, 3.23, -136.38") 
+-----------------------------------------------------------
+-- 4. FIX LAG 1
+-----------------------------------------------------------
+btn("FIX LAG 1", Color3.fromRGB(0, 180, 255)).MouseButton1Click:Connect(function()
+    Lighting.GlobalShadows = false
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if v:IsA("BasePart") then v.Material = Enum.Material.SmoothPlastic; v.CastShadow = false
+        elseif v:IsA("ParticleEmitter") then v.Enabled = false end
     end
+end)
+
+-----------------------------------------------------------
+-- 5. FIX LAG 2
+-----------------------------------------------------------
+btn("FIX LAG 2", Color3.fromRGB(255, 80, 0)).MouseButton1Click:Connect(function()
+    for _, v in pairs(Workspace:GetDescendants()) do
+        if plr.Character and not v:IsDescendantOf(plr.Character) and v:IsA("BasePart") then
+            v.Transparency = 1
+        end
+    end
+    pcall(function() Workspace.Terrain.WaterTransparency = 1 end)
 end)
