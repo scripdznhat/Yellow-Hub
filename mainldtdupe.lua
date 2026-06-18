@@ -76,22 +76,13 @@ local function btn(txt, col)
 end
 
 -----------------------------------------------------------
--- [[ HỆ THỐNG LOGIC PET NÂNG CAO ]] --
+-- [[ HỆ THỐNG LOGIC PET ĐỨNG ĐẤT CO PY TÚI ĐỒ ]] --
 -----------------------------------------------------------
-local SKILL_KW = {"skill","ability","attack","damage","combat","shoot","fire","cast","spell","aura","projectile","special"}
-
-local function isSkillScript(s)
-    local n = s.Name:lower()
-    for _, kw in ipairs(SKILL_KW) do
-        if n:find(kw, 1, true) then return true end
-    end
-    return false
-end
-
 local function getGroundY(worldPos, excludeList)
     local rp = RaycastParams.new()
     rp.FilterType = Enum.RaycastFilterType.Exclude
     rp.FilterDescendantsInstances = excludeList or {}
+    -- Bắn tia từ trên trời xuống để tìm bề mặt đất chính xác
     local hit = Workspace:Raycast(worldPos + Vector3.new(0, 60, 0), Vector3.new(0, -150, 0), rp)
     return hit and hit.Position.Y or worldPos.Y
 end
@@ -101,6 +92,7 @@ local function findPet()
     if not char then return nil end
     local charRoot = char:FindFirstChild("HumanoidRootPart")
 
+    -- Tìm theo dữ liệu chủ sở hữu của game
     for _, obj in ipairs(Workspace:GetDescendants()) do
         if obj:IsA("Model") and obj ~= char then
             local oid = obj:GetAttribute("OwnerId")
@@ -111,13 +103,14 @@ local function findPet()
         end
     end
 
+    -- Nếu game giấu attribute thì tự quét con Pet đứng gần nhân vật nhất dưới 100 studs
     if charRoot then
-        local best, bestD = nil, 10
+        local best, bestD = nil, 100
         for _, obj in ipairs(Workspace:GetDescendants()) do
-            if obj:IsA("Model") and obj ~= char then
-                local r = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart
-                if r then
-                    local d = (r.Position - charRoot.Position).Magnitude
+            if obj:IsA("Model") and obj ~= char and not obj:FindFirstChild("Humanoid") then
+                local rPart = obj:FindFirstChild("HumanoidRootPart") or obj.PrimaryPart or obj:FindFirstChildWhichIsA("BasePart")
+                if rPart then
+                    local d = (rPart.Position - charRoot.Position).Magnitude
                     if d < bestD then bestD = d; best = obj end
                 end
             end
@@ -127,95 +120,45 @@ local function findPet()
     return nil
 end
 
-local function spawnFollowPet(srcModel, char)
+-- Hàm triệu hồi đặt Pet đứng im trên mặt đất
+local function spawnStaticGroundPet(srcModel, char)
     local charRoot = char:FindFirstChild("HumanoidRootPart")
-    if not charRoot then return nil, nil end
+    if not charRoot then return nil end
 
     local clone = srcModel:Clone()
     clone.Name = srcModel.Name
     clone.Parent = Workspace
 
+    -- Tắt toàn bộ script hoạt ảnh cũ để tránh lỗi bẻ khớp vặn người
     for _, s in ipairs(clone:GetDescendants()) do
-        if s:IsA("Script") then s.Disabled = true end
-        if s:IsA("LocalScript") and isSkillScript(s) then s:Destroy() end
+        if s:IsA("Script") or s:IsA("LocalScript") then s.Disabled = true end
     end
 
-    local petRoot = clone:FindFirstChild("HumanoidRootPart") or clone.PrimaryPart or clone:FindFirstChildOfClass("BasePart")
-    if not petRoot then clone:Destroy(); return nil, nil end
+    local petRoot = clone:FindFirstChild("HumanoidRootPart") or clone.PrimaryPart or clone:FindFirstChildWhichIsA("BasePart")
+    if not petRoot then clone:Destroy(); return nil end
     clone.PrimaryPart = petRoot
 
+    -- Đo kích thước chiều cao của pet để đặt chân chạm đúng cỏ
     local ok, _, sz = pcall(function() return clone:GetBoundingBox() end)
-    local halfH = (ok and sz) and sz.Y / 2 or 2
+    local halfH = (ok and sz) and sz.Y / 2 or 1.5
 
+    -- Tính toán vị trí bên cạnh người chơi và quét mặt đất
     local spawnXZ = charRoot.Position + charRoot.CFrame.RightVector * 4
     local groundY = getGroundY(spawnXZ, {clone, char})
-    local spawnPos = Vector3.new(spawnXZ.X, groundY + halfH + 0.05, spawnXZ.Z)
+    local spawnPos = Vector3.new(spawnXZ.X, groundY + halfH, spawnXZ.Z)
 
-    clone:PivotTo(CFrame.new(spawnPos))
+    -- Đưa pet đến vị trí đất và xoay mặt hướng theo hướng của bạn
+    clone:PivotTo(CFrame.lookAt(spawnPos, Vector3.new(charRoot.Position.X, spawnPos.Y, charRoot.Position.Z)))
 
-    local hum = clone:FindFirstChildOfClass("Humanoid")
-    local conn = nil
-
-    if hum then
-        for _, p in ipairs(clone:GetDescendants()) do
-            if p:IsA("BasePart") then
-                p.Anchored = false
-                p.CanCollide = false
-            end
+    -- KHÓA CỨNG TOÀN BỘ BỘ PHẬN: Ép đứng im trên đất 100%, không bay, không lún
+    for _, p in ipairs(clone:GetDescendants()) do
+        if p:IsA("BasePart") then
+            p.Anchored = true
+            p.CanCollide = false -- Tắt va chạm để không làm vấp ngã người chơi
         end
-        petRoot.CanCollide = true 
-        petRoot.CFrame = CFrame.new(spawnPos)
-
-        hum.WalkSpeed = 14
-        hum.JumpPower = 0
-        hum.AutoRotate = true
-        hum.NameDisplayDistance = 0
-        hum.HealthDisplayDistance = 0
-
-        conn = RunService.Heartbeat:Connect(function()
-            if not clone.Parent or not char.Parent then conn:Disconnect(); return end
-            local cr = char:FindFirstChild("HumanoidRootPart")
-            if not cr then return end
-
-            local diff = cr.Position - petRoot.Position
-            if diff.Magnitude > 5 then
-                hum:MoveTo(cr.Position - diff.Unit * 3)
-            end
-        end)
-    else
-        for _, p in ipairs(clone:GetDescendants()) do
-            if p:IsA("BasePart") then
-                p.Anchored = false
-                p.CanCollide = false
-                p.Massless = true
-            end
-        end
-        petRoot.Massless = false
-
-        local bp = Instance.new("BodyPosition", petRoot)
-        bp.MaxForce = Vector3.new(1e5, 1e5, 1e5)
-        bp.P = 5000; bp.D = 500; bp.Position = spawnPos
-
-        local bg = Instance.new("BodyGyro", petRoot)
-        bg.MaxTorque = Vector3.new(0, 1e5, 0)
-        bg.P = 5000; bg.D = 400
-
-        local angle = math.random() * math.pi * 2
-
-        conn = RunService.Heartbeat:Connect(function(dt)
-            if not clone.Parent or not char.Parent then conn:Disconnect(); return end
-            local cr = char:FindFirstChild("HumanoidRootPart")
-            if not cr then return end
-
-            -- Đoạn này đã được sửa lỗi thiếu dấu ngoặc
-            angle = (angle + dt * 1.0) % (math.pi * 2)
-            local target = cr.Position + Vector3.new(math.cos(angle) * 3.5, 2.5, math.sin(angle) * 3.5)
-            bp.Position = target
-            bg.CFrame = CFrame.new(petRoot.Position, cr.Position)
-        end)
     end
 
-    return clone, conn
+    return clone
 end
 
 local function createPetTool(srcModel)
@@ -229,6 +172,7 @@ local function createPetTool(srcModel)
     tool.CanBeDropped = false
     tool.ToolTip = "Trang bị để gọi " .. srcModel.Name
 
+    -- Tạo handle tàng hình để tool hiển thị trên thanh công cụ hotbar
     local handle = Instance.new("Part", tool)
     handle.Name = "Handle"
     handle.Size = Vector3.new(0.1, 0.1, 0.1)
@@ -236,18 +180,20 @@ local function createPetTool(srcModel)
     handle.CanCollide = false
     handle.Massless = true
 
-    local petClone, petConn = nil, nil
+    local petClone = nil
 
     local function despawn()
-        if petConn then petConn:Disconnect(); petConn = nil end
         if petClone and petClone.Parent then petClone:Destroy() end
         petClone = nil
     end
 
+    -- Cầm tool lên -> Thả pet đứng im trên đất
     tool.Equipped:Connect(function()
         local char = plr.Character
-        if char then petClone, petConn = spawnFollowPet(srcModel, char) end
+        if char then petClone = spawnStaticGroundPet(srcModel, char) end
     end)
+    
+    -- Cất tool đi -> Pet biến mất sạch sẽ chống lag map
     tool.Unequipped:Connect(despawn)
     tool.AncestryChanged:Connect(function() if not tool.Parent then despawn() end end)
     
