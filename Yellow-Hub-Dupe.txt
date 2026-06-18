@@ -10,7 +10,7 @@ local AnimOut = TweenInfo.new(0.4, Enum.EasingStyle.Quad, Enum.EasingDirection.I
 
 -- URL Host của bạn
 local BASE_URL = "https://yellowhub.ldtroblox.site"
-local SAVE_FILE = "scripttest.txt"
+local SAVE_FILE = "Yellow-Hub-Dupe.txt"
 
 -- ==========================================
 -- TỰ ĐỘNG LẤY HWID CHUẨN XÁC
