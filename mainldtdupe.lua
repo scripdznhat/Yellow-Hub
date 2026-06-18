@@ -16,16 +16,14 @@ local function r(o, v)
 end
 
 -----------------------------------------------------------
--- [[ MENU CHÍNH: VỪA VẶN, ĐỔI TÊN YELLOW HUB ]] --
+-- [[ MENU CHÍNH - YELLOW HUB ]] --
 -----------------------------------------------------------
 local mf = Instance.new("Frame", sg)
--- Căn chỉnh chiều cao 275 vừa khít với 5 nút
 mf.Size, mf.Position = UDim2.new(0, 190, 0, 275), UDim2.new(0.5, -95, 0.4, -120)
 mf.BackgroundColor3, mf.Active, mf.Draggable = Color3.fromRGB(20, 20, 20), true, true
 mf.Visible = true 
 r(mf, 12)
 
--- Tiêu đề YELLOW HUB màu vàng
 local mt = Instance.new("TextLabel", mf)
 mt.Size, mt.Text = UDim2.new(1, 0, 0, 40), "YELLOW HUB"
 mt.BackgroundColor3, mt.TextColor3 = Color3.fromRGB(255, 200, 0), Color3.new(0, 0, 0)
@@ -62,7 +60,7 @@ local function btn(txt, col)
 end
 
 -----------------------------------------------------------
--- 1. DUPE PET (THẢ LÀ CHẠM ĐẤT 100%, CẤM LƠ LỬNG)
+-- 1. DUPE PET (CẦM TRÊN TAY + THẢ CHẠM ĐẤT 100%)
 -----------------------------------------------------------
 btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function()
     local char = plr.Character
@@ -70,29 +68,61 @@ btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function(
     
     if tool and (tool:GetAttribute("PetId") or tool:GetAttribute("Pet")) then
         local petName = tool:GetAttribute("Pet") or tool.Name
+        local realPet = nil
         
-        -- Tạo một Tool hoàn toàn mới để lách Anti-Cheat, giúp nó nằm yên trong túi đồ
-        local fakeTool = Instance.new("Tool")
-        fakeTool.Name = "[CLONE] " .. petName
-        fakeTool.TextureId = tool.TextureId
-        fakeTool.RequiresHandle = false
-        fakeTool.CanBeDropped = false
+        -- Tìm Pet thật trong Map
+        for _, obj in pairs(Workspace:GetDescendants()) do
+            if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= char then
+                realPet = obj; break
+            end
+        end
         
-        fakeTool.Activated:Connect(function()
-            local mouse = plr:GetMouse()
-            local hitPos = mouse.Hit.Position
+        if realPet then
+            -- TẠO TOOL CẦM TAY
+            local fakeTool = Instance.new("Tool")
+            fakeTool.Name = "[DUPE] " .. petName
+            fakeTool.TextureId = tool.TextureId
+            fakeTool.CanBeDropped = false
+            fakeTool.RequiresHandle = true -- Bắt buộc phải có để hiện trên tay
             
-            local realPet = nil
-            for _, obj in pairs(Workspace:GetDescendants()) do
-                if obj:IsA("Model") and (obj.Name == petName or obj:GetAttribute("PetId")) and obj ~= char then
-                    realPet = obj; break
+            -- TẠO HANDLE VÀ GẮN PET VÀO ĐỂ HIỆN TRÊN TAY
+            local handle = Instance.new("Part")
+            handle.Name = "Handle"
+            handle.Size = Vector3.new(0.5, 0.5, 0.5)
+            handle.Transparency = 1
+            handle.CanCollide = false
+            handle.Massless = true
+            handle.Parent = fakeTool
+            
+            local displayPet = realPet:Clone()
+            for _, v in pairs(displayPet:GetDescendants()) do
+                if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
+                if v:IsA("BasePart") then
+                    v.Anchored = false
+                    v.CanCollide = false
+                    v.Massless = true
                 end
             end
+            displayPet.Parent = fakeTool
             
-            if realPet then
+            local dRoot = displayPet.PrimaryPart or displayPet:FindFirstChild("HumanoidRootPart") or displayPet:FindFirstChildWhichIsA("BasePart")
+            if dRoot then
+                displayPet.PrimaryPart = dRoot
+                displayPet:PivotTo(handle.CFrame * CFrame.new(0, 0, -1.5)) -- Dịch lên trước tay 1 tí cho đẹp
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = handle
+                weld.Part1 = dRoot
+                weld.Parent = handle
+            end
+            
+            -- LOGIC THẢ XUỐNG ĐẤT
+            fakeTool.Activated:Connect(function()
+                local mouse = plr:GetMouse()
+                local hitPos = mouse.Hit.Position
+                
                 local dropPet = realPet:Clone()
                 
-                -- Vô hiệu hóa script, đóng băng Pet ngay lập tức
+                -- Khóa cứng lập tức
                 for _, v in pairs(dropPet:GetDescendants()) do
                     if v:IsA("Script") or v:IsA("LocalScript") then v:Destroy() end
                     if v:IsA("BasePart") then 
@@ -100,36 +130,39 @@ btn("DUPE PET", Color3.fromRGB(0, 120, 255)).MouseButton1Click:Connect(function(
                         v.CanCollide = false 
                     end
                 end
-                
                 dropPet.Parent = Workspace
                 
-                -- Tìm thân chính của Pet (để không bị tính nhầm hào quang to đùng)
+                -- Tìm lõi thật sự của con Pet để lấy chiều cao chuẩn (bỏ qua aura tàng hình)
                 local root = dropPet:FindFirstChild("HumanoidRootPart") or dropPet.PrimaryPart or dropPet:FindFirstChildWhichIsA("BasePart")
-                local heightOffset = (root and root.Size.Y / 2) or 1
+                dropPet.PrimaryPart = root
+                local halfHeight = root and (root.Size.Y / 2) or 1
                 
-                -- Bắn tia dò mặt đất cực kỳ chính xác
+                -- Bắn tia Laser từ tít trên trời thẳng xuống vị trí chuột để lấy tọa độ mặt đất TUYỆT ĐỐI
                 local rayParams = RaycastParams.new()
                 rayParams.FilterType = Enum.RaycastFilterType.Exclude
-                rayParams.FilterDescendantsInstances = {char, dropPet}
-                local rayResult = Workspace:Raycast(hitPos + Vector3.new(0, 50, 0), Vector3.new(0, -100, 0), rayParams)
+                rayParams.FilterDescendantsInstances = {char, dropPet, fakeTool}
+                local rayResult = Workspace:Raycast(hitPos + Vector3.new(0, 500, 0), Vector3.new(0, -1000, 0), rayParams)
                 
-                local groundY = rayResult and rayResult.Position.Y or hitPos.Y
+                local groundY = hitPos.Y
+                if rayResult then
+                    groundY = rayResult.Position.Y
+                end
                 
-                -- Đặt Pet thẳng xuống mặt cỏ
-                dropPet:PivotTo(CFrame.new(hitPos.X, groundY + heightOffset, hitPos.Z))
-            end
+                -- Đặt Pet chuẩn xác xuống đất (Tọa độ đất + nửa chiều cao thân)
+                dropPet:PivotTo(CFrame.new(hitPos.X, groundY + halfHeight, hitPos.Z))
+                
+                fakeTool:Destroy()
+            end)
             
-            fakeTool:Destroy() -- Đặt xong xóa luôn tool
-        end)
-        
-        fakeTool.Parent = plr.Backpack
+            fakeTool.Parent = plr.Backpack
+        end
     end
 end)
 
 -----------------------------------------------------------
 -- 2. DUPE SEEDS
 -----------------------------------------------------------
-btn("DUPE SEEDS", Color3.fromRGB(40, 160, 60)).MouseButton1Click:Connect(function()
+btn("DUPE SEEDS", Color3.fromRGB(40, 180, 40)).MouseButton1Click:Connect(function()
     local tool = plr.Character and plr.Character:FindFirstChildOfClass("Tool")
     if tool and (tool:GetAttribute("SeedTool") or tool:GetAttribute("MainCategory") == "Seed") then
         tool:SetAttribute("Count", (tool:GetAttribute("Count") or 0) + 10)
@@ -139,7 +172,7 @@ end)
 -----------------------------------------------------------
 -- 3. DUPE COIN
 -----------------------------------------------------------
-btn("DUPE COIN", Color3.fromRGB(220, 140, 0)).MouseButton1Click:Connect(function()
+btn("DUPE COIN", Color3.fromRGB(255, 120, 0)).MouseButton1Click:Connect(function()
     local ls = plr:FindFirstChild("leaderstats")
     if ls and ls:FindFirstChild("Sheckles") then
         ls.Sheckles.Value = ls.Sheckles.Value * 2
@@ -149,7 +182,7 @@ end)
 -----------------------------------------------------------
 -- 4. FIX LAG 1
 -----------------------------------------------------------
-btn("FIX LAG 1", Color3.fromRGB(0, 180, 220)).MouseButton1Click:Connect(function()
+btn("FIX LAG 1", Color3.fromRGB(0, 180, 255)).MouseButton1Click:Connect(function()
     Lighting.GlobalShadows = false
     for _, v in pairs(Workspace:GetDescendants()) do
         if v:IsA("BasePart") then v.Material = Enum.Material.SmoothPlastic; v.CastShadow = false
@@ -160,7 +193,7 @@ end)
 -----------------------------------------------------------
 -- 5. FIX LAG 2
 -----------------------------------------------------------
-btn("FIX LAG 2", Color3.fromRGB(220, 50, 50)).MouseButton1Click:Connect(function()
+btn("FIX LAG 2", Color3.fromRGB(255, 50, 50)).MouseButton1Click:Connect(function()
     for _, v in pairs(Workspace:GetDescendants()) do
         if plr.Character and not v:IsDescendantOf(plr.Character) and v:IsA("BasePart") then
             v.Transparency = 1
